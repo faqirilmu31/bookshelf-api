@@ -1,7 +1,6 @@
 const { response } = require('@hapi/hapi/lib/validation');
 const { nanoid } = require('nanoid');
 const books = require('./books');
-const { filterByName, filterByReading, filterByFinished } = require('./filter');
 
 const addBookHandler = (request, h) => {
   const {
@@ -64,41 +63,53 @@ const addBookHandler = (request, h) => {
 
 const getAllBooksHandler = (request, h) => {
   const { name, reading, finished } = request.query;
-
   let filteredBooks = books;
-  filteredBooks = filterByName(books, name);
-  filteredBooks = filterByReading(books, reading);
-  filteredBooks = filterByFinished(books, finished);
 
-  return h.response({
+  if (name !== undefined) 
+    filteredBooks = filteredBooks.filter((book) => book.name.toLowerCase().includes(name.toLowerCase()));
+
+  if (reading !== undefined) 
+    filteredBooks = filteredBooks.filter((book) => book.reading === !!Number(reading));
+
+  if (finished !== undefined)
+    filteredBooks = filteredBooks.filter((book) => book.finished === !!Number(finished));
+
+  const response = h.response({
     status: 'success',
     data: {
       books: filteredBooks.map((book) => ({
         id: book.id,
         name: book.name,
-        publisher: book.publisher
-      }))
-    }
-  }).code(200);
+        publisher: book.publisher,
+      })),
+    },
+  });
+  response.code(200);
+
+  return response;
 };
 
 const getBookByIdHandler = (request, h) => {
-  const { id } = request.params;
-  const book = books.filter((n) => n.id === id)[0];
+  const { bookId } = request.params;
+  const book = books.filter((book) => book.id === bookId)[0];
 
-  if (!book) {
-    return h.response({
-      status: 'fail',
-      message: 'Buku tidak ditemukan'
-    }).code(404);
+  if (book !== undefined) {
+    const response = h.response({
+      status: 'success',
+      data: {
+        book,
+      },
+    });
+    response.code(200);
+    return response;
   }
 
-  return h.response({
-    status: 'success',
-    data: {
-      book
-    }
-  }).code(200);
+  const response = h.response({
+    status: 'fail',
+    message: 'Buku tidak ditemukan',
+  });
+  response.code(404);
+  return response;
 };
 
 const editBookByIdHandler = (request, h) => {
@@ -147,7 +158,7 @@ const editBookByIdHandler = (request, h) => {
     status: 'fail',
     message: 'Gagal memperbarui buku. Id tidak ditemukan'
   }).code(404);
-}
+};
 
 const deleteBookByIdHandler = (request, h) => {
   const id = request.params;
@@ -165,7 +176,7 @@ const deleteBookByIdHandler = (request, h) => {
     status: 'fail',
     message: 'Buku gagal dihapus. Id tidak ditemukan'
   }).code(404);
-}
+};
 
 module.exports = {
   addBookHandler,
@@ -173,4 +184,4 @@ module.exports = {
   getBookByIdHandler,
   editBookByIdHandler,
   deleteBookByIdHandler
-}
+};
